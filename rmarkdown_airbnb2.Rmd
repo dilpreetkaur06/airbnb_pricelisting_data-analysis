@@ -1,0 +1,362 @@
+---
+title: "Rmarkdown_Airbnb"
+author: "Dilpreet Kaur"
+date: "2024-07-07"
+output: html_document
+---
+
+
+## R Markdown
+
+This is an R Markdown document.It provide the Exploratory Data Analysis and predictive modeling on Airbnb listing data.It include all the steps import the data, clean the data,data visualization , modeling and prediction on data.
+
+## Project steps
+
+### 1. Data Importing
+first we need to import the data in csv file.
+```{r}
+project1_data<-read.csv("C:/Users/Dell/OneDrive/Desktop/data_airbnb_project.csv", header = TRUE)
+View(project1_data)
+```
+Data is huge, about to 10k rows so, here is summary of data 
+```{r}
+summary(project1_data)
+```
+structure of data
+```{r}
+str(project1_data)
+
+```
+ All columns of data
+```{r}
+colnames(project1_data)
+
+```
+### 2. Data Cleaning  and Transformation
+
+installation of required packages or libraries
+```{r}
+library(tidyr)
+
+```
+```{r}
+library(dplyr)
+```
+convert all missing value columns into NA value
+```{r}
+project1_data<- project1_data %>% mutate_all(~ ifelse(. == "", NA, .))
+#now check how many missing values are there 
+summary(is.na(project1_data))
+```
+ Data cleaning
+```{r}
+#check some NA value in host_identity_verified 
+project1_data$host_identity_verified[1:100]
+```
+
+replacement of NA values in host_identity_verified 
+```{r}
+project1_data$host_identity_verified[which(is.na(project1_data$host_identity_verified))]<-"unconfirmed"
+# check in column after replacement
+project1_data$host_identity_verified[1:100]
+```
+check NA cols of lat and long
+```{r}
+project1_data$lat[which(is.na(project1_data$lat))]
+project1_data$lond[which(is.na(project1_data$long))]
+
+```
+replacing all NA values of column lat with mean value of that col  
+```{r}
+project1_data$lat[which(is.na(project1_data$lat))]<-mean(project1_data$lat,na.rm=TRUE)
+# lets check some  after replacement
+project1_data$lat[1:100]
+
+```
+dealing with NA in minimum nights 
+```{r}
+#check some NA value 
+project1_data$minimum.nights[1:100]
+
+```
+replace with NA values in minimum night col with mode 
+```{r}
+# replacing with most occurring value 
+freq_value <- table(project1_data$minimum.nights)
+most_occuring_value <- names(freq_value)[which.max(freq_value)]
+#print(most_occurring_value)
+project1_data$minimum.nights[which(is.na(project1_data$minimum.nights))]<-most_occuring_value
+
+#print values of col replaced by most occurring
+project1_data$minimum.nights[1:100]
+```
+replacing NA in service fee col
+```{r}
+project1_data$service.fee <- as.numeric(sub("\\$", "", project1_data$service.fee))
+
+```
+replacing NA values in service fee col
+```{r}
+project1_data<-replace_na(project1_data,list(service.fee=100))
+project1_data$service.fee[1:100]
+```
+handling NA in price col
+```{r}
+project1_data$price <- as.numeric(sub("\\$", "", project1_data$price))
+# some na values in price 
+project1_data$price[200:300]
+
+```
+replace NA value of price col with mean of that col
+```{r}
+project1_data$price[which(is.na(project1_data$price))]<-mean(project1_data$price,na.rm=TRUE)
+project1_data$price[200:300]
+```
+omit rest of NA cols
+```{r}
+project1_data <- na.omit(project1_data)
+summary(is.na(project1_data))
+```
+ Handling errornous data
+```{r}
+project1_data$neighbourhood.group<- recode(project1_data$neighbourhood.group,
+                                      "manhatan" = "Manhattan",
+                                      "brookln" = "Brooklyn")
+# you can see change in some cols
+project1_data$neighbourhood.group[1:50]
+```
+ Data transformation
+```{r}
+
+project1_data <- project1_data %>%
+  mutate(price = as.numeric(price),
+         minimum.nights = as.numeric(minimum.nights))
+
+#Calculate total revenue by multiplying price by minimum nights
+  project1_data <- project1_data %>%
+  mutate(total_revenue = price * minimum.nights)
+#  new col total_revenue is created
+project1_data$total_revenue[1:50]
+```
+
+Create a new variable for the number of years since construction
+```{r}
+  current.year <- 2024  
+  project1_data <- project1_data %>%
+  mutate(construction_since_year = current.year - Construction.year)
+# new variable is created
+  project1_data$construction_since_year[1:200]
+```
+### 3. Data Exploration
+summary statistics
+```{r}
+
+       #maximum price
+       max(project1_data$price)
+       # minimum nights spent
+       min(project1_data$minimum.nights)
+       #average service fees charged
+       mean(project1_data$service.fee)
+       # median of total_revenue earned 
+       median(project1_data$total_revenue)
+
+```
+
+correlation of cols lat,long,service fee,price
+```{r}
+#correlation
+     cor_project1_data<-cor(project1_data[, c("lat","long","service.fee","price")])
+             head(cor_project1_data)
+```
+
+### Data Visualization
+```{r}
+# install required package
+library(ggplot2)
+```
+
+Histogram for 'availbility.365'
+```{r}
+   ggplot(project1_data,aes(x=price))+geom_histogram(color="blue",fill="yellow")
+```
+
+Scatter Plot of 'Price' vs 'Total Revenue':
+```{r}
+   ggplot(project1_data, aes(x = price, y = total_revenue)) +
+   geom_point(color = "blue", size = 3)
+   labs(title = "Price vs Total Revenue", x = "Price", y = "Total Revenue") +
+   theme_minimal()
+             
+```
+
+Boxplot of 'service.fee' by 'room type'
+```{r}
+   project1_data <- project1_data %>%
+   mutate(room.type = as.factor(room.type),
+   service.fee = as.numeric(service.fee))
+                
+   ggplot(project1_data, aes(x = room.type, y = service.fee)) +
+   geom_boxplot( color = "black",fill="pink") +
+  labs(title = "Boxplot of service fee by Room Type", x = "Room Type",
+       y =       "service.fee") +
+     theme_minimal()
+```
+
+### 4. feature engineering
+```{r}
+ #load required package
+   library(geosphere)
+```
+calculating distance from particular point
+```{r}
+# Define landmark coordinates (Times Square, Manhattan)
+   landmark_lat <- 40.7580
+   landmark_long <- -73.9855
+   #calculating distance from times sqaure to each listing
+   project1_data$distance_to_times_square <- distHaversine(matrix(c(landmark_long,            landmark_lat), nrow = 1),project1_data[, c("long", "lat")])
+   # check in some 
+   project1_data$distance_to_times_square[1:100]
+```
+Calculate price per minimum night
+```{r}
+
+   project1_data$price_per_min_night <- as.numeric(gsub("[$,]", "", project1_data$price)) / project1_data$minimum.nights
+#print price per minimum night
+      print(project1_data$price_per_min_night[1:100])
+```
+
+Convert date strings to Date class
+```{r}
+   project1_data$last.review <- as.Date(project1_data$last.review, format="%m/%d/%Y")
+   project1_data$last.review[1:50]
+```
+
+### 5 Modeling and
+### 6 Modeling Evaluation
+
+
+load required package
+```{r}
+library(caTools)
+library(caret)
+library(randomForest)
+```
+
+split data into 'Training data'  and 'testing data' 
+```{r}
+split= sample.split(project1_data$host_identity_verified, SplitRatio = 0.8)
+   
+   training_data=subset(project1_data,split==TRUE)
+   #view training data
+   View(training_data)
+   
+```
+```{r}
+   test_data=subset(project1_data,split==FALSE)
+   # view testing data
+   View(test_data)
+```
+
+### Train of models
+
+ Train 'Linear Regression model'
+```{r}
+   
+   lm_model <-lm(price ~ service.fee + total_revenue + long, data = training_data)
+   summary(lm_model)
+```
+ Train  'Random Forest Model'
+```{r}
+   rf_model <- randomForest(price ~ service.fee + total_revenue+long, data = training_data, method = "rf")
+   print(rf_model)
+```
+Train  'Decision Tree'
+```{r}
+   library(rpart)
+```
+
+```{r}
+dt_model <- rpart(price ~ service.fee+ total_revenue, data = training_data, method = "anova")
+
+print(dt_model)
+
+```
+
+### Prediction on data
+
+'Predication' using 'Liner Model' on test  data
+```{r}
+   lm_predictions <- predict(lm_model, test_data)
+#show some cols of prediction out of 10k rows
+   print(lm_predictions[1:100])
+```
+
+'Prediction' on the test data using 'Random Forest Model'
+```{r}
+   rf_predictions <- predict(rf_model, test_data)
+#show some cols of prediction out of 10k rows
+   print(rf_predictions[1:100])
+```
+
+'Prediction' on test data using 'Decision Tree'
+```{r}
+#prediction on test data using decision tree 
+   dt_predictions <- predict(dt_model, test_data)
+#show some cols of prediction out of 10k rows
+   print(dt_predictions[1:100])
+```
+
+### Calculating 'RMSE' for each training model
+```{r}
+# download required package
+library(Metrics)
+```
+'Calculating RMSE' for each training model
+```{r}
+
+   lm_rmse<-rmse(test_data$price, lm_predictions)
+   rf_rmse<-rmse(test_data$price,rf_predictions)
+   dt_rmse<-rmse(test_data$price,dt_predictions)
+```
+ 
+'Print RMSE' value of  all models
+```{r}
+   cat("liner model  RMSE:", lm_rmse, "\n")
+   cat("random forest model RMSE:", rf_rmse, "\n")
+   cat("decision tree RMSE:", dt_rmse, "\n")
+```
+### Visualization of all predicted models
+
+Plot Liner Model predictions
+```{r}
+ 
+  ggplot(test_data, aes(x = price, y = lm_predictions)) +
+     geom_point() +
+     geom_abline(slope = 1, intercept = 0, col = "red") +
+     labs(title = "Linear Regression Predictions vs Actual", x = "Actual Prices", y = "Predicted Prices")
+```
+
+Plot Random Forest predictions
+```{r}
+ggplot(test_data, aes(x = price, y = rf_predictions)) +
+geom_point() +
+geom_abline(slope = 1, intercept = 0, col = "red") +
+labs(title = "Random Forest Predictions vs Actual", x = "Actual Prices", y = "Predicted Prices")  
+```
+
+### Plot decision tree predictions 
+```{r}
+  ggplot(test_data, aes(x = price, y = dt_predictions)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, col = "red") +
+  labs(title = "Decision Tree Predictions vs Actual", x = "Actual Prices", y = "Predicted Prices") +
+  theme_minimal()   
+   
+```
+
+
+
+
+
+
+
